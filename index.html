@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOMOS 보건증 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+:root {
+  --bg:#f5f4f0;--bg2:#ffffff;--bg3:#f0ede8;--bg4:#e8e4dd;
+  --border:#ddd8d0;--border2:#ccc7be;
+  --text:#1a1916;--text2:#4a4740;--text3:#8a8680;
+  --accent:#2d5a3d;--accent2:#1e3d2a;
+  --green:#2d7d4e;--green-bg:#edf7f1;
+  --yellow:#b45309;--yellow-bg:#fef9ec;
+  --red:#c0392b;--red-bg:#fdf0ef;
+  --radius:12px;--radius2:7px;
+  --shadow:0 2px 12px rgba(0,0,0,0.08);--shadow2:0 4px 24px rgba(0,0,0,0.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;}
+.layout{display:flex;min-height:100vh;}
+.sidebar{width:230px;background:var(--text);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;}
+.main{margin-left:230px;flex:1;display:flex;flex-direction:column;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.content{padding:28px;flex:1;max-width:1300px;}
+.logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.logo-badge{background:var(--accent);color:#d4edda;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.1em;display:inline-block;margin-bottom:8px;}
+.logo-title{font-size:14px;font-weight:700;color:#fff;}
+.logo-sub{font-size:11px;color:rgba(255,255,255,.38);margin-top:2px;font-family:'DM Mono',monospace;}
+.nav{padding:14px 10px;flex:1;overflow-y:auto;}
+.nav-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:.1em;padding:10px 12px 4px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;transition:all .14s;margin-bottom:1px;}
+.nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.85);}
+.nav-item.active{background:var(--accent);color:#fff;}
+.nav-item .ni{font-size:15px;width:20px;text-align:center;}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;}
+.sidebar-foot{padding:14px 10px;border-top:1px solid rgba(255,255,255,.08);}
+.sidebar-user{font-size:11px;color:rgba(255,255,255,.35);padding:0 4px;margin-bottom:8px;}
+.page-title{font-size:15px;font-weight:700;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.topbar-date{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius2);border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;transition:all .14s;white-space:nowrap;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover:not(:disabled){background:var(--accent2);}
+.btn-ghost{background:transparent;color:var(--text2);border:1.5px solid var(--border2);}
+.btn-ghost:hover{background:var(--bg3);color:var(--text);}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1.5px solid rgba(192,57,43,.18);}
+.btn-danger:hover{background:rgba(192,57,43,.15);}
+.btn-sm{padding:6px 11px;font-size:12px;}
+.btn-xs{padding:4px 8px;font-size:11px;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:22px 20px;position:relative;overflow:hidden;transition:box-shadow .2s;}
+.stat-card:hover{box-shadow:var(--shadow2);}
+.stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;opacity:.06;}
+.s-blue::after{background:#2563eb;}.s-green::after{background:var(--green);}
+.s-yellow::after{background:var(--yellow);}.s-red::after{background:var(--red);}
+.stat-icon{font-size:22px;margin-bottom:12px;}
+.stat-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.stat-num{font-size:36px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;}
+.s-blue .stat-num{color:#2563eb;}.s-green .stat-num{color:var(--green);}
+.s-yellow .stat-num{color:var(--yellow);}.s-red .stat-num{color:var(--red);}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:6px;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;}
+.card-header{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.card-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px;}
+.card-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;min-width:600px;}
+thead th{background:var(--bg3);padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody td{padding:11px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:var(--bg3);}
+.td-name{font-weight:600;color:var(--text);}
+.td-mono{font-family:'DM Mono',monospace;font-size:12px;}
+.filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.f-select{background:var(--bg3);border:1.5px solid var(--border);color:var(--text);padding:7px 10px;border-radius:var(--radius2);font-size:12px;font-family:inherit;cursor:pointer;}
+.f-select:focus{outline:none;border-color:var(--accent);}
+.f-input{background:var(--bg3);border:1.5px solid var(--border);color:var(--text);padding:7px 12px;border-radius:var(--radius2);font-size:12px;font-family:inherit;width:180px;}
+.f-input:focus{outline:none;border-color:var(--accent);}
+.f-input::placeholder{color:var(--text3);}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.b-green{background:var(--green-bg);color:var(--green);}
+.b-green::before{background:var(--green);}
+.b-yellow{background:var(--yellow-bg);color:var(--yellow);}
+.b-yellow::before{background:var(--yellow);animation:blink 2s infinite;}
+.b-red{background:var(--red-bg);color:var(--red);}
+.b-red::before{background:var(--red);animation:blink 1.2s infinite;}
+.b-gray{background:var(--bg3);color:var(--text3);}
+.b-gray::before{background:var(--text3);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.overlay{position:fixed;inset:0;background:rgba(26,25,22,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow2);}
+.modal-sm{max-width:380px;}
+.mh{padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.mt{font-size:15px;font-weight:700;}
+.mc{background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:2px 5px;border-radius:5px;line-height:1;}
+.mc:hover{background:var(--bg3);color:var(--text);}
+.mb{padding:18px 22px;}
+.mf{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.fg:last-child{margin-bottom:0;}
+.fl{font-size:12px;font-weight:600;color:var(--text2);}
+.fl .req{color:var(--red);}
+.fi,.fs{background:var(--bg3);border:1.5px solid var(--border);color:var(--text);padding:9px 12px;border-radius:var(--radius2);font-size:13px;font-family:inherit;transition:border-color .14s;width:100%;}
+.fi:focus,.fs:focus{outline:none;border-color:var(--accent);background:var(--bg2);}
+.fi::placeholder{color:var(--text3);}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.fhint{font-size:11px;color:var(--text3);margin-top:2px;}
+.toast-box{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--text);color:#fff;padding:12px 16px;border-radius:var(--radius2);font-size:13px;box-shadow:var(--shadow2);display:flex;align-items:center;gap:9px;min-width:260px;animation:tin .25s ease;}
+.toast.ok{border-left:3px solid var(--green);}
+.toast.err{border-left:3px solid var(--red);}
+.toast.info{border-left:3px solid #2563eb;}
+@keyframes tin{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+.page{display:none;}.page.active{display:block;}
+.empty{text-align:center;padding:48px 20px;color:var(--text3);}
+.empty .ei{font-size:36px;margin-bottom:10px;}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:sp .6s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+#loginWrap{min-height:100vh;background:var(--bg);display:flex;align-items:center;justify-content:center;}
+.login-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:44px 40px;width:360px;box-shadow:var(--shadow2);}
+.login-logo{text-align:center;margin-bottom:30px;}
+.login-badge{background:var(--accent);color:#d4edda;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;letter-spacing:.1em;display:inline-block;margin-bottom:10px;}
+.login-title{font-size:22px;font-weight:700;}
+.login-sub{font-size:13px;color:var(--text3);margin-top:4px;}
+.login-box .fg{margin-bottom:12px;}
+.login-full{width:100%;margin-top:4px;}
+.setting-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;overflow:hidden;}
+.setting-head{padding:15px 20px;border-bottom:1px solid var(--border);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.setting-body{padding:20px;}
+.conn-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:20px;font-weight:600;}
+.conn-badge.ok{background:var(--green-bg);color:var(--green);}
+.conn-badge.err{background:var(--red-bg);color:var(--red);}
+.conn-badge.none{background:var(--bg3);color:var(--text3);}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.setup-banner{background:#fffbeb;border:1.5px solid #fcd34d;border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;}
+.setup-banner .sb-icon{font-size:20px;flex-shrink:0;margin-top:1px;}
+.setup-banner .sb-text{font-size:13px;color:#92400e;line-height:1.7;}
+.log-item{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.log-item:last-child{border-bottom:none;}
+.log-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.log-icon.ok{background:var(--green-bg);}.log-icon.fail{background:var(--red-bg);}
+.log-info{flex:1;min-width:0;}
+.log-name{font-size:13px;font-weight:600;color:var(--text);}
+.log-detail{font-size:12px;color:var(--text3);margin-top:1px;}
+.log-time{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;}
+.info-box{background:var(--green-bg);border:1px solid rgba(45,125,78,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--green);}
+.warn-box{background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#92400e;}
+code{background:var(--bg3);padding:1px 6px;border-radius:3px;font-family:'DM Mono',monospace;font-size:12px;}
+@media(max-width:900px){.stat-grid{grid-template-columns:1fr 1fr;}.frow{grid-template-columns:1fr;}.sidebar{width:200px;}.main{margin-left:200px;}}
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="loginWrap">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-badge">MOMOS</div>
+      <div class="login-title">보건증 관리</div>
+      <div class="login-sub">Health Certificate Manager</div>
+    </div>
+    <div class="fg"><label class="fl">아이디</label><input type="text" id="liId" class="fi" value="admin"></div>
+    <div class="fg"><label class="fl">비밀번호</label><input type="password" id="liPw" class="fi" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn btn-primary login-full" onclick="doLogin()">로그인</button>
+  </div>
+</div>
+
+<!-- 메인 앱 -->
+<div id="appWrap" style="display:none">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-badge">MOMOS</div>
+        <div class="logo-title">보건증 관리</div>
+        <div class="logo-sub">Health Cert Manager</div>
+      </div>
+      <nav class="nav">
+        <div class="nav-label">메인</div>
+        <div class="nav-item active" data-page="dashboard" onclick="goPage('dashboard')"><span class="ni">📊</span> 대시보드</div>
+        <div class="nav-item" data-page="employees" onclick="goPage('employees')"><span class="ni">👥</span> 직원 관리</div>
+        <div class="nav-item" data-page="certs" onclick="goPage('certs')"><span class="ni">📋</span> 보건증 관리<span class="nav-badge" id="nbAlert" style="display:none">0</span></div>
+        <div class="nav-label">관리</div>
+        <div class="nav-item" data-page="history" onclick="goPage('history')"><span class="ni">📜</span> 갱신 이력</div>
+        <div class="nav-item" data-page="departments" onclick="goPage('departments')"><span class="ni">🏢</span> 소속 관리</div>
+        <div class="nav-item" data-page="logs" onclick="goPage('logs')"><span class="ni">📧</span> 이메일 로그</div>
+        <div class="nav-item" data-page="settings" onclick="goPage('settings')"><span class="ni">⚙️</span> 설정</div>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="sidebar-user" id="sideUser"></div>
+        <button class="btn btn-ghost btn-sm" style="width:100%;color:rgba(255,255,255,.5);border-color:rgba(255,255,255,.15)" onclick="doLogout()">로그아웃</button>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div class="page-title" id="pageTitle">대시보드</div>
+        <div class="topbar-right">
+          <span id="connStatus" class="conn-badge none" style="display:none"><span class="conn-dot"></span> 미연결</span>
+          <button class="btn btn-ghost btn-sm" id="btnAlert" onclick="sendAlertManual()">📧 알림 발송</button>
+          <div class="topbar-date" id="topDate"></div>
+        </div>
+      </div>
+      <div class="content">
+
+        <!-- 대시보드 -->
+        <div id="page-dashboard" class="page active">
+          <div id="setupBanner" class="setup-banner" style="display:none">
+            <div class="sb-icon">⚠️</div>
+            <div class="sb-text"><strong>Supabase 연결에 실패했습니다.</strong><br>
+            네트워크 상태를 확인하거나 페이지를 새로고침 해주세요.</div>
+          </div>
+          <div class="stat-grid">
+            <div class="stat-card s-blue"><div class="stat-icon">👤</div><div class="stat-label">전체 직원</div><div class="stat-num" id="st0">—</div><div class="stat-sub">등록된 총 인원</div></div>
+            <div class="stat-card s-green"><div class="stat-icon">✅</div><div class="stat-label">보건증 정상</div><div class="stat-num" id="st1">—</div><div class="stat-sub">유효기간 충분</div></div>
+            <div class="stat-card s-yellow"><div class="stat-icon">⚠️</div><div class="stat-label">만료 임박</div><div class="stat-num" id="st2">—</div><div class="stat-sub">1개월 이내</div></div>
+            <div class="stat-card s-red"><div class="stat-icon">🚨</div><div class="stat-label">만료됨</div><div class="stat-num" id="st3">—</div><div class="stat-sub">즉시 갱신 필요</div></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">⚠️ 주의 필요 직원 (임박 + 만료)</div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <select class="f-select" id="dashDept" onchange="renderDash()"><option value="">전체 소속</option></select>
+                <button class="btn btn-ghost btn-sm" onclick="toggleDashCheck()" id="btnDashCheck">☑ 선택 발송</button>
+                <button class="btn btn-sm" id="btnDashSend" onclick="sendCheckedAlerts()" style="display:none;background:#fff8e1;color:#b45309;border:1.5px solid #fcd34d">📧 선택 발송 (<span id="checkCount">0</span>명)</button>
+              </div>
+            </div>
+            <div class="tbl-wrap" id="dashTable"><div class="empty"><div class="spin"></div></div></div>
+          </div>
+        </div>
+
+        <!-- 직원 관리 -->
+        <div id="page-employees" class="page">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">👥 직원 목록</div>
+              <div class="card-actions">
+                <input type="text" class="f-input" id="empSearch" placeholder="🔍 이름 검색" oninput="renderEmp()">
+                <select class="f-select" id="empDept" onchange="renderEmp()"><option value="">전체 소속</option></select>
+                <button class="btn btn-ghost btn-sm" onclick="exportEmpExcel()">📥 엑셀 다운</button>
+                <button class="btn btn-ghost btn-sm" onclick="document.getElementById('empFile').click()">📤 엑셀 업로드</button>
+                <input type="file" id="empFile" accept=".xlsx,.xls" style="display:none" onchange="importEmpExcel(event)">
+                <button class="btn btn-primary btn-sm" onclick="openEmpModal()">+ 직원 등록</button>
+              </div>
+            </div>
+            <div class="tbl-wrap" id="empTable"><div class="empty"><div class="spin"></div></div></div>
+          </div>
+        </div>
+
+        <!-- 보건증 관리 -->
+        <div id="page-certs" class="page">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📋 보건증 현황</div>
+              <div class="card-actions">
+                <input type="text" class="f-input" id="certSearch" placeholder="🔍 이름 검색" oninput="renderCerts()">
+                <select class="f-select" id="certDept" onchange="renderCerts()"><option value="">전체 소속</option></select>
+                <select class="f-select" id="certStatus" onchange="renderCerts()">
+                  <option value="">전체 상태</option><option value="ok">✅ 정상</option>
+                  <option value="soon">⚠️ 임박</option><option value="expired">🚨 만료</option><option value="none">— 미등록</option>
+                </select>
+                <button class="btn btn-ghost btn-sm" onclick="exportCertExcel()">📥 엑셀 다운</button>
+                <button class="btn btn-ghost btn-sm" onclick="goPage('history')">📜 갱신 이력</button>
+                <button class="btn btn-primary btn-sm" onclick="openCertModal()">+ 보건증 등록</button>
+              </div>
+            </div>
+            <div class="tbl-wrap" id="certTable"><div class="empty"><div class="spin"></div></div></div>
+          </div>
+        </div>
+
+        <!-- 갱신 이력 -->
+        <div id="page-history" class="page">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📜 보건증 갱신 이력</div>
+              <div class="card-actions">
+                <input type="text" class="f-input" id="histSearch" placeholder="🔍 이름 검색" oninput="renderHistory()">
+                <select class="f-select" id="histDept" onchange="renderHistory()"><option value="">전체 소속</option></select>
+              </div>
+            </div>
+            <div class="tbl-wrap" id="histTable"><div class="empty"><div class="spin"></div></div></div>
+          </div>
+        </div>
+
+        <!-- 소속 관리 -->
+        <div id="page-departments" class="page">
+          <div class="card" style="max-width:500px">
+            <div class="card-header">
+              <div class="card-title">🏢 소속 목록</div>
+              <button class="btn btn-primary btn-sm" onclick="openDeptModal()">+ 소속 추가</button>
+            </div>
+            <div id="deptList"></div>
+          </div>
+        </div>
+
+        <!-- 이메일 로그 -->
+        <div id="page-logs" class="page">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📧 이메일 발송 로그</div>
+              <button class="btn btn-ghost btn-sm" onclick="loadLogs()">🔄 새로고침</button>
+            </div>
+            <div id="logList"><div class="empty"><div class="spin"></div></div></div>
+          </div>
+        </div>
+
+        <!-- 설정 -->
+        <div id="page-settings" class="page">
+
+          <!-- 로그인 설정 -->
+          <div class="setting-card">
+            <div class="setting-head">🔑 로그인 설정</div>
+            <div class="setting-body">
+              <div class="frow">
+                <div class="fg"><label class="fl">관리자 아이디</label><input type="text" class="fi" id="cfgId"></div>
+                <div class="fg"><label class="fl">비밀번호 변경</label><input type="password" class="fi" id="cfgPw" placeholder="새 비밀번호 입력"></div>
+              </div>
+              <button class="btn btn-primary" onclick="saveLoginCfg()">저장</button>
+            </div>
+          </div>
+
+          <!-- EmailJS 설정 -->
+          <div class="setting-card">
+            <div class="setting-head">📧 EmailJS 알림 설정</div>
+            <div class="setting-body">
+              <div class="warn-box">
+                💡 <strong>EmailJS 무료 계정</strong>으로 이메일 발송이 가능합니다. (월 200건 무료)<br>
+                <a href="https://www.emailjs.com" target="_blank" style="color:var(--accent)">emailjs.com</a>에서 가입 후 Service ID / Template ID / Public Key를 입력하세요.
+              </div>
+              <div class="frow">
+                <div class="fg"><label class="fl">EmailJS Service ID</label><input type="text" class="fi" id="cfgEjsService" placeholder="service_xxxxxxx"></div>
+                <div class="fg"><label class="fl">EmailJS Template ID</label><input type="text" class="fi" id="cfgEjsTemplate" placeholder="template_xxxxxxx"></div>
+              </div>
+              <div class="fg">
+                <label class="fl">EmailJS Public Key</label>
+                <input type="text" class="fi" id="cfgEjsKey" placeholder="XXXXXXXXXXXXXXXX">
+                <div class="fhint">EmailJS 대시보드 → Account → General → Public Key</div>
+              </div>
+              <div class="frow">
+                <div class="fg"><label class="fl">관리자 수신 이메일</label><input type="email" class="fi" id="cfgAdminEmail" placeholder="admin@gmail.com"></div>
+                <div class="fg"><label class="fl">알림 기준 (만료 N일 전)</label><input type="number" class="fi" id="cfgAlertDays" value="30" min="1" max="365"></div>
+              </div>
+              <button class="btn btn-primary" onclick="saveEmailCfg()">저장</button>
+            </div>
+          </div>
+
+          <!-- EmailJS 템플릿 가이드 -->
+          <div class="setting-card">
+            <div class="setting-head">📋 EmailJS 템플릿 변수 가이드</div>
+            <div class="setting-body">
+              <div class="warn-box">
+                💡 EmailJS Template 작성 시 아래 변수를 그대로 사용하세요.
+              </div>
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);line-height:2.2;">
+{{to_email}} &nbsp;&nbsp;&nbsp;→ 수신자 이메일 (직원 이메일)<br>
+{{to_name}} &nbsp;&nbsp;&nbsp;&nbsp;→ 수신자 이름<br>
+{{expire_date}} → 만료일<br>
+{{days_left}} &nbsp;&nbsp;→ 잔여일수 (예: 14일 후 만료)<br>
+{{admin_email}} → 관리자 이메일 (참조용)
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /settings -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 직원 모달 -->
+<div class="overlay" id="empModal" style="display:none" onclick="if(event.target===this)closeModal('empModal')">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="empModalTitle">직원 등록</div><button class="mc" onclick="closeModal('empModal')">×</button></div>
+    <div class="mb">
+      <div class="frow">
+        <div class="fg"><label class="fl">이름 <span class="req">*</span></label><input type="text" class="fi" id="empName" placeholder="홍길동"></div>
+        <div class="fg"><label class="fl">이메일 <span class="req">*</span></label><input type="email" class="fi" id="empEmail" placeholder="hong@gmail.com"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">연락처</label><input type="tel" class="fi" id="empPhone" placeholder="010-0000-0000"></div>
+        <div class="fg"><label class="fl">소속</label><select class="fs" id="empDeptSel"></select></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">직무</label><input type="text" class="fi" id="empJob" placeholder="생산 담당"></div>
+        <div class="fg"><label class="fl">입사일</label><input type="date" class="fi" id="empHire"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('empModal')">취소</button>
+      <button class="btn btn-primary" id="empSaveBtn" onclick="saveEmp()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 보건증 모달 -->
+<div class="overlay" id="certModal" style="display:none" onclick="if(event.target===this)closeModal('certModal')">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="certModalTitle">보건증 등록</div><button class="mc" onclick="closeModal('certModal')">×</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">직원 선택 <span class="req">*</span></label><select class="fs" id="certEmpSel"></select></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">발급일 <span class="req">*</span></label><input type="date" class="fi" id="certIssued" onchange="autoExpire()"></div>
+        <div class="fg"><label class="fl">만료일 <span class="req">*</span></label><input type="date" class="fi" id="certExpire"><div class="fhint">발급일 입력 시 1년 후 자동 계산</div></div>
+      </div>
+      <div class="fg"><label class="fl">메모</label><input type="text" class="fi" id="certMemo" placeholder="특이사항"></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('certModal')">취소</button>
+      <button class="btn btn-primary" id="certSaveBtn" onclick="saveCert()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 소속 모달 -->
+<div class="overlay" id="deptModal" style="display:none" onclick="if(event.target===this)closeModal('deptModal')">
+  <div class="modal modal-sm">
+    <div class="mh"><div class="mt" id="deptModalTitle">소속 추가</div><button class="mc" onclick="closeModal('deptModal')">×</button></div>
+    <div class="mb"><div class="fg"><label class="fl">소속명 <span class="req">*</span></label><input type="text" class="fi" id="deptName" placeholder="예: 물류팀"></div></div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('deptModal')">취소</button>
+      <button class="btn btn-primary" onclick="saveDept()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 보건증 갱신 모달 -->
+<div class="overlay" id="renewModal" style="display:none" onclick="if(event.target===this)closeModal('renewModal')">
+  <div class="modal modal-sm">
+    <div class="mh"><div class="mt">🔄 보건증 갱신</div><button class="mc" onclick="closeModal('renewModal')">×</button></div>
+    <div class="mb">
+      <div class="info-box">✅ 갱신 시 새 이력이 추가됩니다. 기존 기록은 유지돼요.</div>
+      <div class="fg"><label class="fl">직원</label><input type="text" class="fi" id="renewEmpName" disabled style="opacity:.6"></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">새 발급일 <span class="req">*</span></label><input type="date" class="fi" id="renewIssued" onchange="autoRenewExpire()"></div>
+        <div class="fg"><label class="fl">새 만료일 <span class="req">*</span></label><input type="date" class="fi" id="renewExpire"><div class="fhint">발급일 입력 시 자동 계산</div></div>
+      </div>
+      <div class="fg"><label class="fl">메모</label><input type="text" class="fi" id="renewMemo" placeholder="갱신 사유 등"></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('renewModal')">취소</button>
+      <button class="btn btn-primary" id="renewSaveBtn" onclick="saveRenew()">갱신 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 삭제 확인 -->
+<div class="overlay" id="delModal" style="display:none">
+  <div class="modal modal-sm">
+    <div class="mh"><div class="mt">삭제 확인</div><button class="mc" onclick="closeModal('delModal')">×</button></div>
+    <div class="mb"><p style="font-size:14px;color:var(--text2);line-height:1.7" id="delMsg"></p></div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('delModal')">취소</button>
+      <button class="btn btn-danger" id="delConfirm">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-box" id="toastBox"></div>
+
+<script>
+/* ════════════════════════════════════════════
+   Supabase 연결 정보 (하드코딩)
+════════════════════════════════════════════ */
+const SUPA_URL = 'https://akjqinteapebszuifudi.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFranFpbnRlYXBlYnN6dWlmdWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzg3MTMsImV4cCI6MjA4OTk1NDcxM30.Gzn2kig1YjooH8xcFv1EDK-GaIiJNUBpVYOLiM3rHuE';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+/* ════════════════════════════════════════════
+   설정 (localStorage)
+════════════════════════════════════════════ */
+const CFG_KEY = 'momos_hcm3';
+let cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+const DEF = {
+  id: 'admin', pw: 'admin1234',
+  ejsService: '', ejsTemplate: '', ejsKey: '',
+  adminEmail: 'momoscoffee@gmail.com', alertDays: 30
+};
+const C = k => cfg[k] !== undefined ? cfg[k] : DEF[k];
+const saveC = o => { cfg = { ...cfg, ...o }; localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); };
+
+/* ════════════════════════════════════════════
+   전역 데이터
+════════════════════════════════════════════ */
+let gEmp = [], gCert = [], gDept = [];
+let editEmpId = null, editCertId = null, editDeptId = null, isConn = false;
+
+/* ════════════════════════════════════════════
+   로그인
+════════════════════════════════════════════ */
+function doLogin() {
+  const id = document.getElementById('liId').value.trim();
+  const pw = document.getElementById('liPw').value;
+  if (id === C('id') && pw === C('pw')) {
+    localStorage.setItem('momos_loggedin', '1');
+    showApp(id);
+  } else {
+    toast('아이디 또는 비밀번호가 맞지 않습니다', 'err');
+  }
+}
+function showApp(id) {
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('appWrap').style.display = 'block';
+  document.getElementById('sideUser').textContent = '👤 ' + (id || C('id'));
+  document.getElementById('topDate').textContent = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+  initApp();
+}
+function doLogout() {
+  localStorage.removeItem('momos_loggedin');
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('liPw').value = '';
+}
+window.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('momos_loggedin') === '1') showApp();
+});
+
+/* ════════════════════════════════════════════
+   초기화
+════════════════════════════════════════════ */
+function initApp() {
+  loadSettings();
+  loadAll();
+
+/* ════════════════════════════════════════════
+   페이지 전환
+════════════════════════════════════════════ */
+const PT = { dashboard: '대시보드', employees: '직원 관리', certs: '보건증 관리', history: '갱신 이력', departments: '소속 관리', logs: '이메일 로그', settings: '설정' };
+function goPage(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-' + n).classList.add('active');
+  document.querySelector('[data-page="' + n + '"]').classList.add('active');
+  document.getElementById('pageTitle').textContent = PT[n];
+  if (n === 'logs') loadLogs();
+  if (n === 'history') { populateDepts(); renderHistory(); }
+}
+
+/* ════════════════════════════════════════════
+   Supabase API 호출 헬퍼
+════════════════════════════════════════════ */
+async function dbSelect(table, query) {
+  if (!sb) throw new Error('Supabase 미연결');
+  let q = sb.from(table).select('*');
+  if (query) q = query(q);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
+async function dbInsert(table, row) {
+  if (!sb) throw new Error('Supabase 미연결');
+  const { error } = await sb.from(table).insert(row);
+  if (error) throw error;
+}
+
+async function dbUpdate(table, id, row) {
+  if (!sb) throw new Error('Supabase 미연결');
+  const { error } = await sb.from(table).update(row).eq('id', id);
+  if (error) throw error;
+}
+
+async function dbDelete(table, id) {
+  if (!sb) throw new Error('Supabase 미연결');
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error) throw error;
+}
+
+/* ════════════════════════════════════════════
+   데이터 로드
+════════════════════════════════════════════ */
+async function loadAll() {
+  try {
+    const [emps, certs, depts] = await Promise.all([
+      dbSelect('employees', q => q.order('name')),
+      dbSelect('certs', q => q.order('expire_date')),
+      dbSelect('departments', q => q.order('name'))
+    ]);
+    gEmp = emps; gCert = certs; gDept = depts;
+    isConn = true; setConn(true);
+    document.getElementById('setupBanner').style.display = 'none';
+    populateDepts(); renderDash(); renderEmp(); renderCerts(); renderDepts(); updateBadge();
+  } catch (e) {
+    isConn = false; setConn(false);
+    toast('데이터 로드 실패: ' + (e.message || e), 'err');
+  }
+}
+
+async function loadLogs() {
+  const wrap = document.getElementById('logList');
+  wrap.innerHTML = '<div class="empty"><div class="spin"></div></div>';
+  try {
+    const logs = await dbSelect('email_logs', q => q.order('sent_at', { ascending: false }).limit(50));
+    if (!logs.length) { wrap.innerHTML = '<div class="empty"><div class="ei">📭</div><p>발송 이력이 없습니다</p></div>'; return; }
+    wrap.innerHTML = logs.map(l => `
+      <div class="log-item">
+        <div class="log-icon ${l.status === 'success' ? 'ok' : 'fail'}">${l.status === 'success' ? '✅' : '❌'}</div>
+        <div class="log-info">
+          <div class="log-name">${l.employee_name || '—'}</div>
+          <div class="log-detail">${l.email || ''} · 만료: ${fd(l.expire_date)}${l.error_msg ? ' · ' + l.error_msg : ''}</div>
+        </div>
+        <div class="log-time">${fdt(l.sent_at)}</div>
+      </div>`).join('');
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty"><div class="ei">❌</div><p>로그 로드 실패: ' + e.message + '</p></div>';
+  }
+}
+
+/* ════════════════════════════════════════════
+   유틸
+════════════════════════════════════════════ */
+function uuid() { return 'xxxxxxxx-4xxx-yxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }) + '-' + Date.now().toString(36); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function fd(d) {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d);
+    if (!isNaN(dt)) {
+      const y = dt.getFullYear(); const m = String(dt.getMonth() + 1).padStart(2, '0'); const day = String(dt.getDate()).padStart(2, '0');
+      return y + '.' + m + '.' + day;
+    }
+    const p = d.split('-'); return p.length === 3 ? p[0] + '.' + p[1] + '.' + p[2] : d;
+  } catch { return d; }
+}
+function fdt(dt) { if (!dt) return '—'; return String(dt).replace('T', ' ').slice(0, 16); }
+function dl(exp) { if (!exp) return null; return Math.ceil((new Date(exp) - new Date()) / 86400000); }
+function cs(exp) { const d = dl(exp); if (d === null) return 'none'; if (d < 0) return 'expired'; if (d <= 30) return 'soon'; return 'ok'; }
+function sbadge(exp) {
+  if (!exp) return '<span class="badge b-gray">— 미등록</span>';
+  const d = dl(exp);
+  if (d < 0) return '<span class="badge b-red">🚨 만료됨</span>';
+  if (d <= 30) return `<span class="badge b-yellow">⚠️ D-${d}</span>`;
+  return '<span class="badge b-green">✅ 정상</span>';
+}
+function empCert(empId) { return gCert.filter(c => c.employee_id === empId).sort((a, b) => (b.expire_date || '').localeCompare(a.expire_date || ''))[0] || null; }
+function setConn(ok) {
+  ['connStatus', 'cfgConnBadge'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.className = 'conn-badge ' + (ok ? 'ok' : 'err');
+    el.innerHTML = `<span class="conn-dot"></span> ${ok ? '연결됨' : '연결 안됨'}`;
+  });
+}
+function populateDepts() {
+  const opts = gDept.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+  document.getElementById('empDeptSel').innerHTML = '<option value="">소속 없음</option>' + opts;
+  ['dashDept', 'empDept', 'certDept', 'histDept'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.innerHTML = '<option value="">전체 소속</option>' + opts;
+  });
+}
+function updateBadge() {
+  const cnt = gEmp.filter(e => { const s = cs(empCert(e.id)?.expire_date); return s === 'soon' || s === 'expired'; }).length;
+  const nb = document.getElementById('nbAlert'); nb.style.display = cnt ? '' : 'none'; nb.textContent = cnt;
+}
+
+/* ════════════════════════════════════════════
+   렌더 - 대시보드
+════════════════════════════════════════════ */
+let dashCheckMode = false;
+function toggleDashCheck() {
+  dashCheckMode = !dashCheckMode;
+  const btn = document.getElementById('btnDashCheck');
+  const sendBtn = document.getElementById('btnDashSend');
+  btn.style.background = dashCheckMode ? 'var(--green-bg)' : '';
+  btn.style.color = dashCheckMode ? 'var(--green)' : '';
+  btn.style.borderColor = dashCheckMode ? 'var(--green)' : '';
+  sendBtn.style.display = dashCheckMode ? '' : 'none';
+  renderDash();
+}
+function updateCheckCount() {
+  const cnt = document.querySelectorAll('.dash-chk:checked').length;
+  document.getElementById('checkCount').textContent = cnt;
+}
+async function sendCheckedAlerts() {
+  const checked = [...document.querySelectorAll('.dash-chk:checked')].map(el => el.dataset.empId);
+  if (!checked.length) { toast('선택된 직원이 없습니다', 'info'); return; }
+  const targets = checked.map(empId => {
+    const e = gEmp.find(x => x.id === empId);
+    const ct = empCert(empId);
+    return { id: e.id, name: e.name, email: e.email, expire_date: ct.expire_date, days_left: dl(ct.expire_date) };
+  });
+  const btn = document.getElementById('btnDashSend');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> 발송 중...';
+  const sent = await sendEmailsTo(targets);
+  toast(`${sent}명에게 알림을 발송했습니다`, 'ok');
+  btn.disabled = false; btn.innerHTML = `📧 선택 발송 (<span id="checkCount">${targets.length}</span>명)`;
+}
+function renderDash() {
+  const dept = document.getElementById('dashDept')?.value || '';
+  let emps = dept ? gEmp.filter(e => e.department === dept) : gEmp;
+  const c = { ok: 0, soon: 0, expired: 0, none: 0 };
+  emps.forEach(e => c[cs(empCert(e.id)?.expire_date)]++);
+  document.getElementById('st0').textContent = emps.length;
+  document.getElementById('st1').textContent = c.ok;
+  document.getElementById('st2').textContent = c.soon;
+  document.getElementById('st3').textContent = c.expired;
+  const warn = emps.filter(e => { const s = cs(empCert(e.id)?.expire_date); return s === 'soon' || s === 'expired'; })
+    .sort((a, b) => (empCert(a.id)?.expire_date || '9999').localeCompare(empCert(b.id)?.expire_date || '9999'));
+  const tbl = document.getElementById('dashTable');
+  if (!warn.length) { tbl.innerHTML = '<div class="empty"><div class="ei">🎉</div><p>주의 필요 직원이 없습니다</p></div>'; return; }
+  const chkHeader = dashCheckMode ? '<th style="width:36px"><input type="checkbox" onchange="document.querySelectorAll(\'.dash-chk\').forEach(c=>c.checked=this.checked);updateCheckCount()"></th>' : '';
+  tbl.innerHTML = `<table><thead><tr>${chkHeader}<th>이름</th><th>소속</th><th>만료일</th><th>상태</th><th>이메일</th></tr></thead><tbody>` +
+    warn.map(e => {
+      const ct = empCert(e.id);
+      const chkCell = dashCheckMode ? `<td><input type="checkbox" class="dash-chk" data-emp-id="${e.id}" onchange="updateCheckCount()"></td>` : '';
+      return `<tr>${chkCell}<td class="td-name">${e.name}</td><td>${e.department || '—'}</td><td class="td-mono">${fd(ct?.expire_date)}</td><td>${sbadge(ct?.expire_date)}</td><td class="td-mono" style="font-size:12px">${e.email || '—'}</td></tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+/* ════════════════════════════════════════════
+   렌더 - 직원
+════════════════════════════════════════════ */
+function renderEmp() {
+  const q = (document.getElementById('empSearch')?.value || '').toLowerCase();
+  const dept = document.getElementById('empDept')?.value || '';
+  let list = gEmp;
+  if (q) list = list.filter(e => e.name.toLowerCase().includes(q) || (e.email || '').toLowerCase().includes(q));
+  if (dept) list = list.filter(e => e.department === dept);
+  const wrap = document.getElementById('empTable');
+  if (!list.length) { wrap.innerHTML = '<div class="empty"><div class="ei">👥</div><p>직원이 없습니다</p></div>'; return; }
+  wrap.innerHTML = `<table><thead><tr><th>이름</th><th>소속</th><th>직무</th><th>이메일</th><th>연락처</th><th>입사일</th><th>보건증</th><th></th></tr></thead><tbody>` +
+    list.map(e => { const ct = empCert(e.id); return `<tr>
+      <td class="td-name">${e.name}</td><td>${e.department || '—'}</td><td>${e.job_title || '—'}</td>
+      <td class="td-mono" style="font-size:12px">${e.email || '—'}</td><td class="td-mono">${e.phone || '—'}</td>
+      <td class="td-mono">${fd(e.hire_date)}</td><td>${sbadge(ct?.expire_date)}</td>
+      <td><div style="display:flex;gap:5px">
+        <button class="btn btn-ghost btn-xs" onclick="openEmpModal('${e.id}')">수정</button>
+        <button class="btn btn-danger btn-xs" onclick="confirmDel('emp','${e.id}','${e.name}')">삭제</button>
+      </div></td></tr>`; }).join('') + '</tbody></table>';
+}
+
+/* ════════════════════════════════════════════
+   렌더 - 보건증
+════════════════════════════════════════════ */
+function renderCerts() {
+  const q = (document.getElementById('certSearch')?.value || '').toLowerCase();
+  const dept = document.getElementById('certDept')?.value || '';
+  const status = document.getElementById('certStatus')?.value || '';
+  let list = gEmp;
+  if (q) list = list.filter(e => e.name.toLowerCase().includes(q));
+  if (dept) list = list.filter(e => e.department === dept);
+  if (status) list = list.filter(e => cs(empCert(e.id)?.expire_date) === status);
+  const wrap = document.getElementById('certTable');
+  if (!list.length) { wrap.innerHTML = '<div class="empty"><div class="ei">📋</div><p>해당 직원이 없습니다</p></div>'; return; }
+  wrap.innerHTML = `<table><thead><tr><th>이름</th><th>소속</th><th>발급일</th><th>만료일</th><th>상태</th><th>메모</th><th></th></tr></thead><tbody>` +
+    list.map(e => { const ct = empCert(e.id); const s = cs(ct?.expire_date); return `<tr>
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <span class="td-name">${e.name}</span>
+        ${ct ? `<button class="btn btn-xs" style="background:var(--green-bg);color:var(--green);border:1px solid rgba(45,125,78,.2);padding:2px 7px;font-size:11px" onclick="openRenewModal('${e.id}')">🔄 갱신</button>` : ''}
+      </div></td>
+      <td>${e.department || '—'}</td>
+      <td class="td-mono">${fd(ct?.issued_date)}</td>
+      <td class="td-mono">${fd(ct?.expire_date)}</td>
+      <td>${sbadge(ct?.expire_date)}</td>
+      <td style="font-size:12px;color:var(--text3)">${ct?.memo || ''}</td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${ct ? `
+          ${(s === 'soon' || s === 'expired') ? `<button class="btn btn-xs" style="background:#fff8e1;color:#b45309;border:1.5px solid #fcd34d" onclick="sendOneAlert('${e.id}')">📧 알림</button>` : ''}
+          <button class="btn btn-ghost btn-xs" onclick="openCertModal('${ct.id}')">수정</button>
+          <button class="btn btn-danger btn-xs" onclick="confirmDel('cert','${ct.id}','${e.name} 보건증')">삭제</button>`
+          : `<button class="btn btn-primary btn-xs" onclick="openCertModalForEmp('${e.id}')">등록</button>`}
+      </div></td></tr>`; }).join('') + '</tbody></table>';
+}
+
+/* ════════════════════════════════════════════
+   렌더 - 갱신 이력
+════════════════════════════════════════════ */
+function renderHistory() {
+  const q = (document.getElementById('histSearch')?.value || '').toLowerCase();
+  const dept = document.getElementById('histDept')?.value || '';
+  let list = [...gCert].sort((a, b) => (b.updated_at || b.issued_date || '').localeCompare(a.updated_at || a.issued_date || ''));
+  if (q) list = list.filter(c => (c.employee_name || '').toLowerCase().includes(q));
+  if (dept) list = list.filter(c => c.department === dept);
+  const wrap = document.getElementById('histTable');
+  if (!list.length) { wrap.innerHTML = '<div class="empty"><div class="ei">📜</div><p>갱신 이력이 없습니다</p></div>'; return; }
+  wrap.innerHTML = `<table><thead><tr><th>이름</th><th>소속</th><th>발급일</th><th>만료일</th><th>갱신일</th><th>메모</th></tr></thead><tbody>` +
+    list.map(c => `<tr>
+      <td class="td-name">${c.employee_name || '—'}</td>
+      <td>${c.department || '—'}</td>
+      <td class="td-mono">${fd(c.issued_date)}</td>
+      <td class="td-mono">${fd(c.expire_date)}</td>
+      <td class="td-mono" style="color:var(--accent)">${fd(c.updated_at)}</td>
+      <td style="font-size:12px;color:var(--text3)">${c.memo || ''}</td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+/* ════════════════════════════════════════════
+   렌더 - 소속
+════════════════════════════════════════════ */
+function renderDepts() {
+  const wrap = document.getElementById('deptList');
+  if (!gDept.length) { wrap.innerHTML = '<div class="empty"><div class="ei">🏢</div><p>소속이 없습니다</p></div>'; return; }
+  wrap.innerHTML = gDept.map(d => {
+    const cnt = gEmp.filter(e => e.department === d.name).length;
+    return `<div style="padding:13px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div><span style="font-weight:600">${d.name}</span><span style="font-size:12px;color:var(--text3);margin-left:8px">${cnt}명</span></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-xs" onclick="openDeptModal('${d.id}')">수정</button>
+        <button class="btn btn-danger btn-xs" onclick="confirmDel('dept','${d.id}','${d.name}')">삭제</button>
+      </div></div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════
+   모달 - 직원
+════════════════════════════════════════════ */
+function openEmpModal(id) {
+  editEmpId = id || null;
+  document.getElementById('empModalTitle').textContent = id ? '직원 수정' : '직원 등록';
+  ['empName', 'empEmail', 'empPhone', 'empJob', 'empHire'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('empDeptSel').value = '';
+  if (id) {
+    const e = gEmp.find(x => x.id === id); if (!e) return;
+    document.getElementById('empName').value = e.name;
+    document.getElementById('empEmail').value = e.email || '';
+    document.getElementById('empPhone').value = e.phone || '';
+    document.getElementById('empDeptSel').value = e.department || '';
+    document.getElementById('empJob').value = e.job_title || '';
+    document.getElementById('empHire').value = e.hire_date || '';
+  }
+  document.getElementById('empModal').style.display = 'flex';
+}
+async function saveEmp() {
+  const name = document.getElementById('empName').value.trim();
+  const email = document.getElementById('empEmail').value.trim();
+  if (!name || !email) { toast('이름과 이메일은 필수입니다', 'err'); return; }
+  setLoad('empSaveBtn', true);
+  const row = {
+    id: editEmpId || uuid(), name, email,
+    phone: document.getElementById('empPhone').value.trim(),
+    department: document.getElementById('empDeptSel').value,
+    job_title: document.getElementById('empJob').value.trim(),
+    hire_date: document.getElementById('empHire').value || null,
+    is_active: 'true'
+  };
+  try {
+    if (editEmpId) {
+      await dbUpdate('employees', editEmpId, row);
+    } else {
+      await dbInsert('employees', row);
+    }
+    toast(editEmpId ? '직원 정보가 수정되었습니다' : '직원이 등록되었습니다', 'ok');
+    closeModal('empModal'); await loadAll();
+  } catch (e) { toast('저장 실패: ' + e.message, 'err'); }
+  setLoad('empSaveBtn', false);
+}
+
+/* ════════════════════════════════════════════
+   모달 - 보건증
+════════════════════════════════════════════ */
+function openCertModal(id) {
+  editCertId = id || null;
+  document.getElementById('certModalTitle').textContent = id ? '보건증 수정' : '보건증 등록';
+  document.getElementById('certEmpSel').innerHTML = gEmp.map(e => `<option value="${e.id}">${e.name} (${e.department || '소속없음'})</option>`).join('');
+  document.getElementById('certIssued').value = '';
+  document.getElementById('certExpire').value = '';
+  document.getElementById('certMemo').value = '';
+  if (id) {
+    const c = gCert.find(x => x.id === id); if (!c) return;
+    document.getElementById('certEmpSel').value = c.employee_id;
+    document.getElementById('certIssued').value = c.issued_date || '';
+    document.getElementById('certExpire').value = c.expire_date || '';
+    document.getElementById('certMemo').value = c.memo || '';
+  }
+  document.getElementById('certModal').style.display = 'flex';
+}
+function openCertModalForEmp(empId) { openCertModal(null); document.getElementById('certEmpSel').value = empId; }
+function autoExpire() {
+  const v = document.getElementById('certIssued').value; if (!v) return;
+  const d = new Date(v); d.setFullYear(d.getFullYear() + 1);
+  document.getElementById('certExpire').value = d.toISOString().split('T')[0];
+}
+async function saveCert() {
+  const empId = document.getElementById('certEmpSel').value;
+  const issued = document.getElementById('certIssued').value;
+  const expire = document.getElementById('certExpire').value;
+  if (!empId || !issued || !expire) { toast('직원, 발급일, 만료일은 필수입니다', 'err'); return; }
+  setLoad('certSaveBtn', true);
+  const emp = gEmp.find(e => e.id === empId);
+  const row = {
+    id: editCertId || uuid(),
+    employee_id: empId, employee_name: emp?.name || '',
+    department: emp?.department || '', issued_date: issued, expire_date: expire,
+    memo: document.getElementById('certMemo').value.trim(),
+    updated_at: today()
+  };
+  try {
+    if (editCertId) {
+      await dbUpdate('certs', editCertId, row);
+    } else {
+      await dbInsert('certs', row);
+    }
+    toast(editCertId ? '보건증 정보가 수정되었습니다' : '보건증이 등록되었습니다', 'ok');
+    closeModal('certModal'); await loadAll();
+  } catch (e) { toast('저장 실패: ' + e.message, 'err'); }
+  setLoad('certSaveBtn', false);
+}
+
+/* ════════════════════════════════════════════
+   모달 - 소속
+════════════════════════════════════════════ */
+function openDeptModal(id) {
+  editDeptId = id || null;
+  document.getElementById('deptModalTitle').textContent = id ? '소속 수정' : '소속 추가';
+  document.getElementById('deptName').value = id ? (gDept.find(d => d.id === id)?.name || '') : '';
+  document.getElementById('deptModal').style.display = 'flex';
+}
+async function saveDept() {
+  const name = document.getElementById('deptName').value.trim();
+  if (!name) { toast('소속명을 입력해주세요', 'err'); return; }
+  try {
+    if (editDeptId) {
+      await dbUpdate('departments', editDeptId, { name });
+    } else {
+      await dbInsert('departments', { id: uuid(), name });
+    }
+    toast(editDeptId ? '소속이 수정되었습니다' : '소속이 추가되었습니다', 'ok');
+    closeModal('deptModal'); await loadAll();
+  } catch (e) { toast('저장 실패: ' + e.message, 'err'); }
+}
+
+/* ════════════════════════════════════════════
+   보건증 갱신
+════════════════════════════════════════════ */
+let renewEmpId = null;
+function openRenewModal(empId) {
+  renewEmpId = empId;
+  const e = gEmp.find(x => x.id === empId);
+  document.getElementById('renewEmpName').value = e?.name + ' (' + (e?.department || '소속없음') + ')';
+  document.getElementById('renewIssued').value = '';
+  document.getElementById('renewExpire').value = '';
+  document.getElementById('renewMemo').value = '';
+  document.getElementById('renewModal').style.display = 'flex';
+}
+function autoRenewExpire() {
+  const v = document.getElementById('renewIssued').value; if (!v) return;
+  const d = new Date(v); d.setFullYear(d.getFullYear() + 1);
+  document.getElementById('renewExpire').value = d.toISOString().split('T')[0];
+}
+async function saveRenew() {
+  const issued = document.getElementById('renewIssued').value;
+  const expire = document.getElementById('renewExpire').value;
+  if (!issued || !expire) { toast('발급일과 만료일은 필수입니다', 'err'); return; }
+  setLoad('renewSaveBtn', true);
+  const emp = gEmp.find(e => e.id === renewEmpId);
+  const row = {
+    id: uuid(), employee_id: renewEmpId, employee_name: emp?.name || '',
+    department: emp?.department || '', issued_date: issued, expire_date: expire,
+    memo: document.getElementById('renewMemo').value.trim(), updated_at: today()
+  };
+  try {
+    await dbInsert('certs', row);
+    toast('갱신 이력이 저장되었습니다 ✅', 'ok');
+    closeModal('renewModal'); await loadAll();
+  } catch (e) { toast('저장 실패: ' + e.message, 'err'); }
+  setLoad('renewSaveBtn', false);
+}
+
+/* ════════════════════════════════════════════
+   삭제
+════════════════════════════════════════════ */
+function confirmDel(type, id, label) {
+  document.getElementById('delMsg').innerHTML = `<b style="color:var(--red)">${label}</b>을(를) 삭제하시겠습니까?<br><span style="font-size:12px;color:var(--text3)">이 작업은 되돌릴 수 없습니다.</span>`;
+  const tableMap = { emp: 'employees', cert: 'certs', dept: 'departments' };
+  document.getElementById('delConfirm').onclick = async () => {
+    try {
+      await dbDelete(tableMap[type], id);
+      toast('삭제되었습니다', 'ok'); closeModal('delModal'); await loadAll();
+    } catch (e) { toast('삭제 실패: ' + e.message, 'err'); }
+  };
+  document.getElementById('delModal').style.display = 'flex';
+}
+
+/* ════════════════════════════════════════════
+   EmailJS 알림 발송
+════════════════════════════════════════════ */
+function initEmailJS() {
+  const key = C('ejsKey');
+  if (!key) return false;
+  try { emailjs.init(key); return true; } catch { return false; }
+}
+
+async function sendEmailsTo(targets) {
+  const svcId = C('ejsService');
+  const tplId = C('ejsTemplate');
+  const ejsKey = C('ejsKey');
+  if (!svcId || !tplId || !ejsKey) {
+    toast('EmailJS 설정이 없습니다. 설정 탭에서 입력해주세요.', 'err');
+    return 0;
+  }
+  initEmailJS();
+  let sent = 0;
+  for (const emp of targets) {
+    const dLabel = emp.days_left == 0 ? '오늘 만료' : emp.days_left + '일 후 만료';
+    const params = {
+      to_email: emp.email,
+      to_name: emp.name,
+      expire_date: emp.expire_date,
+      days_left: dLabel,
+      admin_email: C('adminEmail')
+    };
+    let status = 'success', errMsg = '';
+    try {
+      await emailjs.send(svcId, tplId, params);
+      sent++;
+    } catch (e) {
+      status = 'fail';
+      errMsg = e.text || e.message || String(e);
+    }
+    // 로그 저장
+    try {
+      await dbInsert('email_logs', {
+        id: uuid(), employee_name: emp.name, email: emp.email,
+        expire_date: emp.expire_date, status, sent_at: new Date().toISOString(), error_msg: errMsg
+      });
+    } catch {}
+  }
+  return sent;
+}
+
+async function sendAlertManual() {
+  const btn = document.getElementById('btnAlert');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> 발송 중...';
+  const days = parseInt(C('alertDays')) || 30;
+  const targets = gEmp.filter(e => {
+    const ct = empCert(e.id); if (!ct) return false;
+    const d = dl(ct.expire_date); return d !== null && d >= 0 && d <= days;
+  }).map(e => { const ct = empCert(e.id); return { id: e.id, name: e.name, email: e.email, expire_date: ct.expire_date, days_left: dl(ct.expire_date) }; });
+  if (!targets.length) { toast('발송 대상이 없습니다', 'info'); btn.disabled = false; btn.innerHTML = '📧 알림 발송'; return; }
+  const sent = await sendEmailsTo(targets);
+  toast(`${sent}/${targets.length}명에게 알림을 발송했습니다`, 'ok');
+  btn.disabled = false; btn.innerHTML = '📧 알림 발송';
+}
+
+async function sendOneAlert(empId) {
+  const e = gEmp.find(x => x.id === empId);
+  const ct = empCert(empId);
+  if (!e || !ct) { toast('직원 또는 보건증 정보가 없습니다', 'err'); return; }
+  if (!confirm(e.name + '님에게 보건증 갱신 요청 메일을 발송할까요?')) return;
+  const sent = await sendEmailsTo([{ id: e.id, name: e.name, email: e.email, expire_date: ct.expire_date, days_left: dl(ct.expire_date) }]);
+  if (sent > 0) toast(e.name + '님에게 알림을 발송했습니다', 'ok');
+}
+
+/* ════════════════════════════════════════════
+   엑셀
+════════════════════════════════════════════ */
+async function importEmpExcel(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    const wb = XLSX.read(ev.target.result, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+    let added = 0;
+    for (const r of rows) {
+      const name = r['이름'] || r['name'] || ''; const email = r['이메일'] || r['email'] || '';
+      if (!name || !email) continue;
+      const row = {
+        id: uuid(), name, email, phone: r['연락처'] || r['phone'] || '',
+        department: r['소속'] || r['department'] || '',
+        job_title: r['직무'] || r['job_title'] || '',
+        hire_date: r['입사일'] || r['hire_date'] || null, is_active: 'true'
+      };
+      try { await dbInsert('employees', row); added++; } catch {}
+    }
+    toast(`${added}명 등록 완료`, 'ok'); e.target.value = ''; await loadAll();
+  };
+  reader.readAsArrayBuffer(file);
+}
+function exportEmpExcel() {
+  const stMap = { ok: '정상', soon: '임박', expired: '만료', none: '미등록' };
+  const data = gEmp.map(e => ({ '이름': e.name, '이메일': e.email, '연락처': e.phone || '', '소속': e.department || '', '직무': e.job_title || '', '입사일': e.hire_date || '', '보건증 만료일': empCert(e.id)?.expire_date || '미등록', '상태': stMap[cs(empCert(e.id)?.expire_date)] }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), '직원목록');
+  XLSX.writeFile(wb, 'MOMOS_직원목록_' + today() + '.xlsx');
+}
+function exportCertExcel() {
+  const stMap = { ok: '정상', soon: '임박', expired: '만료', none: '미등록' };
+  const data = gEmp.map(e => { const ct = empCert(e.id); return { '이름': e.name, '소속': e.department || '', '발급일': ct?.issued_date || '', '만료일': ct?.expire_date || '', '상태': stMap[cs(ct?.expire_date)], '잔여일': ct ? (dl(ct.expire_date) || '') : '', '이메일': e.email, '메모': ct?.memo || '' }; });
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), '보건증현황');
+  XLSX.writeFile(wb, 'MOMOS_보건증현황_' + today() + '.xlsx');
+}
+
+/* ════════════════════════════════════════════
+   설정
+════════════════════════════════════════════ */
+function loadSettings() {
+  document.getElementById('cfgId').value = C('id');
+  document.getElementById('cfgEjsService').value = C('ejsService');
+  document.getElementById('cfgEjsTemplate').value = C('ejsTemplate');
+  document.getElementById('cfgEjsKey').value = C('ejsKey');
+  document.getElementById('cfgAdminEmail').value = C('adminEmail');
+  document.getElementById('cfgAlertDays').value = C('alertDays');
+}
+function saveLoginCfg() {
+  const id = document.getElementById('cfgId').value.trim();
+  const pw = document.getElementById('cfgPw').value;
+  if (!id) { toast('아이디를 입력해주세요', 'err'); return; }
+  saveC({ id, ...(pw ? { pw } : {}) });
+  toast('로그인 설정이 저장되었습니다', 'ok');
+}
+function saveEmailCfg() {
+  saveC({
+    ejsService: document.getElementById('cfgEjsService').value.trim(),
+    ejsTemplate: document.getElementById('cfgEjsTemplate').value.trim(),
+    ejsKey: document.getElementById('cfgEjsKey').value.trim(),
+    adminEmail: document.getElementById('cfgAdminEmail').value.trim(),
+    alertDays: parseInt(document.getElementById('cfgAlertDays').value) || 30
+  });
+  toast('이메일 설정이 저장되었습니다', 'ok');
+}
+/* ════════════════════════════════════════════
+   공통
+════════════════════════════════════════════ */
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function setLoad(id, on) {
+  const btn = document.getElementById(id); if (!btn) return;
+  if (on) { btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spin"></span> 저장 중...'; }
+  else { btn.disabled = false; btn.innerHTML = btn.dataset.orig || '저장'; }
+}
+function toast(msg, type = 'info') {
+  const box = document.getElementById('toastBox');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = `<span>${{ ok: '✅', err: '❌', info: 'ℹ️' }[type] || 'ℹ️'}</span><span>${msg}</span>`;
+  box.appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+</script>
+</body>
+</html>
